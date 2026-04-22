@@ -47,4 +47,15 @@ ip netns exec ns_server ip route add default via 10.0.2.1
 ip netns exec ns_router sysctl -w net.ipv4.ip_forward=1
 
 echo "Topology created successfully."
-echo "Try: sudo ip netns exec ns_client ping -c 3 10.0.2.2"
+
+# Testing
+echo "Testing client -> router"
+ip netns exec ns_client ping -c 1 10.0.1.1
+
+echo "Testing server -> router"
+ip netns exec ns_server ping -c 1 10.0.2.1
+
+echo "Testing client -> server"
+ip netns exec ns_client ping -c 1 10.0.2.2
+
+echo "Topology OK"
