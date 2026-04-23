@@ -16,13 +16,13 @@ echo "Saving results to: $OUTDIR"
   date
 } > "$OUTDIR/meta.txt"
 
-sudo sysctl -w net.ipv4.tcp_congestion_control="$CC" | tee "$OUTDIR/sysctl.txt"
+# sudo sysctl -w net.ipv4.tcp_congestion_control="$CC" | tee "$OUTDIR/sysctl.txt"
 
 case "$SCENARIO" in
   baseline) "$SCRIPT_DIR/clear_tc.sh" ;;
-  wifi) "$SCRIPT_DIR/wifi.sh" ;;
-  satellite) "$SCRIPT_DIR/satellite.sh" ;;
-  bufferbloat) "$SCRIPT_DIR/bufferbloat.sh" ;;
+  wifi) "$SCRIPT_DIR/scenarios/wifi.sh" ;;
+  satellite) "$SCRIPT_DIR/scenarios/satellite.sh" ;;
+  bufferbloat) "$SCRIPT_DIR/scenarios/bufferbloat.sh" ;;
   *) echo "Unknown scenario"; exit 1 ;;
 esac
 
@@ -54,7 +54,7 @@ else
   sudo ip netns exec ns_client ping -c 20 10.0.2.2 | tee "$OUTDIR/ping.txt"
 fi
 
-sudo ip netns exec ns_client iperf3 -c 10.0.2.2 -t 30 -i 1 | tee "$OUTDIR/iperf_client.txt"
+sudo ip netns exec ns_client iperf3 -c 10.0.2.2 -t 60 -C "$CC" -J > "$OUTDIR/iperf_client.json"
 
 if [[ "$SCENARIO" == "bufferbloat" ]]; then
   kill "$PING_PID" 2>/dev/null || true
