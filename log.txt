@@ -9,10 +9,10 @@ baseline:
 
 wifi:
 	tc: 
-	ping avg rtt: 40.085 ms
-	ping min rtt: 40.036 ms
-	ping max rtt: 40.378 ms
-	ping packet loss: 5%
-	iperf3 send bitrate: 3.08 Mbit/sec
-	iperf3 recv bitrate: 2.51 Mbit/sec
-	pcap: wifi_iperf.pcap
+	ping avg rtt: 
+	ping min rtt: 
+	ping max rtt: 
+	ping packet loss: 
+	iperf3 send bitrate: 
+	iperf3 recv bitrate: 
+	pcap: 
