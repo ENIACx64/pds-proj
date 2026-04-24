@@ -17,32 +17,33 @@ def load_json(path: Path) -> dict:
 def extract_cwnd_series(path: Path) -> Tuple[List[float], List[float]]:
     data = load_json(path)
 
-    if "intervals" not in data:
-        raise ValueError(f"{path}: missing 'intervals' in JSON")
+    intervals = data.get("intervals")
+    if not intervals:
+        raise ValueError(f"{path}: missing or empty 'intervals'")
 
     times: List[float] = []
     cwnd_kib: List[float] = []
 
-    for idx, interval in enumerate(data["intervals"]):
+    for idx, interval in enumerate(intervals):
         streams = interval.get("streams", [])
         if not streams:
             continue
 
-        stream0 = streams[0]
+        stream = streams[0]
 
-        if "snd_cwnd" not in stream0:
+        if "snd_cwnd" not in stream:
             raise ValueError(
-                f"{path}: missing 'snd_cwnd' in interval {idx}. "
-                "This iperf3 JSON does not appear to contain CWND samples."
+                f"{path}: interval {idx} has no 'snd_cwnd'. "
+                "This JSON does not contain congestion-window samples."
             )
 
-        end_time = stream0.get("end")
+        end_time = stream.get("end")
         if end_time is None:
             end_time = interval.get("sum", {}).get("end")
         if end_time is None:
-            raise ValueError(f"{path}: missing interval end time at interval {idx}")
+            raise ValueError(f"{path}: interval {idx} has no end time")
 
-        cwnd_bytes = stream0["snd_cwnd"]
+        cwnd_bytes = stream["snd_cwnd"]
 
         times.append(float(end_time))
         cwnd_kib.append(float(cwnd_bytes) / 1024.0)
@@ -53,26 +54,52 @@ def extract_cwnd_series(path: Path) -> Tuple[List[float], List[float]]:
     return times, cwnd_kib
 
 
+def parse_series_args(args: List[str]) -> List[Tuple[str, Path]]:
+    if len(args) < 2 or len(args) % 2 != 0:
+        raise ValueError(
+            "You must provide one or more <label> <file.json> pairs."
+        )
+
+    pairs: List[Tuple[str, Path]] = []
+    for i in range(0, len(args), 2):
+        label = args[i]
+        path = Path(args[i + 1])
+        pairs.append((label, path))
+
+    return pairs
+
+
 def main() -> None:
-    if len(sys.argv) != 5:
+    if len(sys.argv) < 5:
         print(
             "Usage:\n"
-            "  python plot_cwnd_json.py "
-            "\"<title>\" <output_file.png> <cubic.json> <bbr.json>"
+            "  python3 plot_cwnd_json.py "
+            "\"<title>\" <output_file.png> "
+            "<label1> <file1.json> [<label2> <file2.json> ...]"
         )
         sys.exit(1)
 
     title = sys.argv[1]
     output_file = Path(sys.argv[2])
-    cubic_json = Path(sys.argv[3])
-    bbr_json = Path(sys.argv[4])
 
-    t_cubic, cwnd_cubic = extract_cwnd_series(cubic_json)
-    t_bbr, cwnd_bbr = extract_cwnd_series(bbr_json)
+    if output_file.suffix.lower() not in {
+        ".png", ".pdf", ".svg", ".jpg", ".jpeg", ".webp"
+    }:
+        raise ValueError(
+            f"Output file must be an image format, got: {output_file}"
+        )
+
+    series = parse_series_args(sys.argv[3:])
 
     plt.figure(figsize=(12, 6))
-    plt.plot(t_cubic, cwnd_cubic, linewidth=2, label="CUBIC")
-    plt.plot(t_bbr, cwnd_bbr, linewidth=2, label="BBR")
+
+    for label, json_path in series:
+        times, cwnd_kib = extract_cwnd_series(json_path)
+        plt.plot(times, cwnd_kib, linewidth=2, label=label)
+        print(
+            f"{label}: min CWND = {min(cwnd_kib):.3f} KiB, "
+            f"max CWND = {max(cwnd_kib):.3f} KiB"
+        )
 
     plt.title(title, fontsize=16, weight="bold")
     plt.xlabel("Time [s]", fontsize=13)
